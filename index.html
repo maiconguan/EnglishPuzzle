@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vocabulary Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body{
+      font-family:system-ui,Arial,sans-serif;
+      background:linear-gradient(135deg,#eef2ff,#fdf4ff);
+      margin:0;padding:20px;
+    }
+    h1{text-align:center;margin-bottom:20px}
+
+    .card{
+      background:#0f172a;color:#e5e7eb;
+      border-radius:20px;
+      padding:24px 26px 30px;
+      max-width:620px;
+      margin:0 auto 24px;
+      box-shadow:0 16px 40px rgba(0,0,0,.45);
+      animation:fadeIn .4s ease;
+    }
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+
+    label{font-weight:600;display:block;margin-top:14px;color:#c7d2fe}
+    input,select{
+      width:100%;padding:12px;margin-top:6px;
+      border-radius:10px;border:1px solid #334155;
+      font-size:15px;box-sizing:border-box;
+      background:#1e293b;color:#e5e7eb;
+    }
+
+    button{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      padding:14px 22px;border:none;border-radius:14px;
+      font-size:16px;font-weight:700;cursor:pointer;
+      transition:all .25s ease;
+    }
+    button.primary{
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      color:#fff;box-shadow:0 10px 22px rgba(99,102,241,.4);
+    }
+    button.primary:hover{
+      transform:translateY(-2px) scale(1.03);
+      box-shadow:0 14px 30px rgba(99,102,241,.55);
+    }
+    button.secondary{background:#f3f4f6;color:#111827}
+    button.secondary:hover{background:#e5e7eb}
+    button:disabled{opacity:.6;cursor:not-allowed}
+
+    .question{
+      margin-top:20px;padding:18px;
+      border-radius:14px;background:#fafafa;color:#111827;
+      border:1px solid #e5e7eb;
+    }
+    .question b{color:#4338ca}
+
+    .listen-btn{
+      background:linear-gradient(135deg,#22c55e,#16a34a);
+      color:#fff;border:none;
+      padding:8px 14px;border-radius:999px;
+      font-size:14px;font-weight:700;
+      cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+      box-shadow:0 6px 16px rgba(34,197,94,.45);
+    }
+
+    .options button{width:100%;text-align:left;margin-top:8px}
+    .options button.selected{outline:3px solid #6366f1;background:#eef2ff}
+    .options button.correct{background:#dcfce7}
+    .options button.incorrect{background:#fee2e2}
+
+    .answer-correct{margin-top:8px;font-size:14px;color:#16a34a;font-weight:600}
+    .error{color:#b91c1c;font-weight:700;text-align:center}
+  </style>
+</head>
+<body>
+
+<h1>🧠 Vocabulary Test</h1>
+
+<div class="card" id="config">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div>
+      <label>User</label>
+      <input id="user" placeholder="VD: Sunny hoặc Rainy" />
+    </div>
+    <div>
+      <label>Tổng số từ kiểm tra</label>
+      <input type="number" id="total" value="10" min="1" />
+    </div>
+    <div style="grid-column:1/3">
+      <label>Cách lấy từ</label>
+      <select id="mode">
+        <option value="recent">Từ mới nhất</option>
+        <option value="random">Ngẫu nhiên</option>
+      </select>
+    </div>
+  </div>
+
+  <label>Phân bố câu hỏi</label>
+  <input type="range" id="meaningCount" min="0" value="5" />
+  <div id="sliderInfo"></div>
+
+  <div style="display:flex;justify-content:center;margin-top:28px">
+    <button class="primary" style="width:260px;font-size:18px" onclick="startTest()">🚀 Bắt đầu làm bài</button>
+  </div>
+  <p class="error" id="errorMsg"></p>
+</div>
+
+<div class="card" id="test" style="display:none"></div>
+<div class="card" id="result" style="display:none"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhBcb0QkG_qNnBoJDGed4RQBYapHq51dvOMm6miEUL_KbIoh-wQbML7JnOgVtxYU4V/exec';
+
+let WORDS=[],questions=[],answers={};
+
+const userInput=document.getElementById('user');
+const totalInput=document.getElementById('total');
+const modeSelect=document.getElementById('mode');
+const slider=document.getElementById('meaningCount');
+const sliderInfo=document.getElementById('sliderInfo');
+const errorMsg=document.getElementById('errorMsg');
+const config=document.getElementById('config');
+const test=document.getElementById('test');
+const result=document.getElementById('result');
+
+function updateSlider(){
+  const total=+totalInput.value||0;
+  slider.max=total;
+  if(+slider.value>total) slider.value=total;
+  sliderInfo.innerText=`Meaning: ${slider.value} | Listening: ${total-slider.value}`;
+}
+slider.oninput=updateSlider;
+totalInput.oninput=updateSlider;
+updateSlider();
+
+const shuffle=a=>[...a].sort(()=>Math.random()-0.5);
+
+async function loadWords(user, total, mode) {
+
+  const url =
+    `${API_URL}?owner=${encodeURIComponent(user)}` +
+    `&limit=${total}` +
+    `&mode=${mode}` +
+    `&ts=${Date.now()}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Không kết nối được server');
+
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+
+  WORDS = json.data;
+}
+
+
+
+
+async function startTest(){
+  errorMsg.innerText='';
+
+  const user = userInput.value.trim() || 'All';
+  const total=+totalInput.value;
+  const mode=modeSelect.value;
+
+  try {
+    await loadWords(user, total, mode);
+  } catch(e){
+    errorMsg.innerText='❌ Lỗi tải dữ liệu: ' + e.message;
+    return;
+  }
+
+  
+  const meaningCount=+slider.value;
+  
+  // let pool=WORDS.filter(w=>w.owner==='All'||w.owner===user);
+  let pool = [...WORDS]; //already filtered at server side
+
+  if(!pool.length){errorMsg.innerText='❌ Không có từ nào';return;}
+
+  // pool=mode==='recent'
+  //   ? pool.sort((a,b)=>new Date(b.time)-new Date(a.time))
+  //   : shuffle(pool);
+
+  // pool=pool.slice(0,total);
+  // if(!pool.length){errorMsg.innerText='❌ Không đủ dữ liệu';return;}
+
+  questions=shuffle([
+    ...shuffle(pool).slice(0,meaningCount).map(w=>makeMeaningQ(w,pool)),
+    ...shuffle(pool).slice(0,total-meaningCount).map(w=>makeListeningQ(w,pool))
+  ]);
+
+  config.style.display='none';
+  renderTest();
+}
+
+function makeMeaningQ(w,p){
+  const reverse=Math.random()<0.5;
+  if(!reverse){
+    return{
+      type:'meaning',
+      question:w.en,
+      answer:w.vi,
+      options:shuffle([w.vi,...shuffle(p.filter(x=>x.vi!==w.vi)).slice(0,3).map(x=>x.vi)])
+    };
+  }
+  return{
+    type:'meaning',
+    question:w.vi,
+    answer:w.en,
+    options:shuffle([w.en,...shuffle(p.filter(x=>x.en!==w.en)).slice(0,3).map(x=>x.en)])
+  };
+}
+
+function makeListeningQ(w,p){
+  return{
+    type:'listening',
+    audio:w.en,
+    answer:w.en,
+    options:shuffle([w.en,...shuffle(p.filter(x=>x.en!==w.en)).slice(0,3).map(x=>x.en)])
+  };
+}
+
+function speak(text){
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='en-US';speechSynthesis.speak(u);
+}
+
+function renderTest(){
+  test.style.display='block';
+  test.innerHTML='<h2>Test</h2>';
+
+  questions.forEach((q,i)=>{
+    const div=document.createElement('div');
+    div.className='question';
+    div.innerHTML=
+      q.type==='meaning'
+        ? `<b>${i+1}. ${q.question}</b>`
+        : `<b>${i+1}. Listening</b> <button class="listen-btn" onclick="speak('${q.audio}')">🔊 Nghe</button>`;
+
+    const opt=document.createElement('div');
+    opt.className='options';
+    q.options.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='secondary';
+      b.innerText=o;
+      b.onclick=()=>{
+        opt.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+        answers[i]=o;
+      };
+      opt.appendChild(b);
+    });
+    div.appendChild(opt);
+    test.appendChild(div);
+  });
+
+  const submit=document.createElement('button');
+  submit.className='primary';
+  submit.style.marginTop='24px';
+  submit.innerHTML='✅ Nộp bài';
+  submit.onclick=submitTest;
+  test.appendChild(submit);
+}
+
+function submitTest(){
+  let correct=0;
+  document.querySelectorAll('.question').forEach((div,i)=>{
+    const q=questions[i];
+    div.querySelectorAll('button.secondary').forEach(b=>{
+      b.disabled=true;
+      if(b.innerText===q.answer) b.classList.add('correct');
+      if(answers[i]===b.innerText && b.innerText!==q.answer) b.classList.add('incorrect');
+    });
+    if(answers[i]===q.answer) correct++;
+    else div.insertAdjacentHTML('beforeend',`<div class="answer-correct">Đáp án đúng: ${q.answer}</div>`);
+  });
+
+  test.querySelector('button.primary').disabled=true;
+
+  const percent=Math.round(correct/questions.length*100);
+  const msg=
+    percent>=90?'🌟 Bạn làm rất tốt!':
+    percent>=75?'👍 Kết quả rất khá':
+    percent>=60?'🙂 Ổn, cần luyện thêm':'💪 Cố gắng thêm nhé';
+
+  result.style.display='block';
+  result.innerHTML=`<h2>Kết quả</h2><p>${correct}/${questions.length} (${percent}%)</p><p>${msg}</p><button class="secondary" onclick="location.reload()">🔄 Test lại</button>`;
+}
+</script>
+</body>
+</html>
