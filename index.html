@@ -231,9 +231,9 @@ function initGame(words) {
   startTimer();
 
   const cards = [];
-  words.forEach(w => {
-    cards.push({ text: w.en, pairId: w.id, lang: "en" });
-    cards.push({ text: w.vi, pairId: w.id, lang: "vi" });
+  words.forEach((w,i) => {
+    cards.push({ text: w.en, pairId: i, lang: "en" });
+    cards.push({ text: w.vi, pairId: i, lang: "vi" });
   });
 
   cards.sort(() => Math.random() - 0.5);
@@ -277,6 +277,8 @@ function checkMatch() {
   const isCorrect =
     a.card.pairId === b.card.pairId &&
     a.card.lang !== b.card.lang;
+
+  console.log("a.card.pairId:" + a.card.pairId + "; b.card.pairId" + b.card.pairId);
 
   if (isCorrect) {
     setTimeout(() => {
