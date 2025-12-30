@@ -465,6 +465,13 @@ function checkPair() {
       scoreEl.textContent = score;
     }
 
+    if(c1.data.lang === 'en') {
+      speakEnglish(c1.data.text);
+    }
+    else {
+      speakEnglish(c2.data.text);
+    }
+
     c1.el.classList.remove('selected');
     c2.el.classList.remove('selected');
 
@@ -525,6 +532,26 @@ function backToSetup() {
   gameScreen.style.display = "none";
   setupScreen.style.display = "block";
 }
+
+function speakEnglish(text) {
+  if (!('speechSynthesis' in window)) return;
+
+  // huỷ giọng đang đọc (tránh chồng tiếng)
+  window.speechSynthesis.cancel();
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 1;
+  utter.pitch = 1;
+
+  // fallback cho iOS
+  const voices = window.speechSynthesis.getVoices();
+  const enVoice = voices.find(v => v.lang.startsWith('en'));
+  if (enVoice) utter.voice = enVoice;
+
+  window.speechSynthesis.speak(utter);
+}
+
 </script>
 
 </body>
