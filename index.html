@@ -456,13 +456,14 @@ function checkPair() {
   var c1 = selectedCards[0];
   var c2 = selectedCards[1];
 
-  var key = c1.data.en;
+  var key = c1.data.pairId;
 
   // đúng
   if (c1.data.pairId === c2.data.pairId && c1.data.lang !== c2.data.lang) {
     if(!disabledPairs[key]) {
       score++;
       scoreEl.textContent = score;
+      //console.log(scoreEl.textContent + '; score = ' + score);
     }
 
     if(c1.data.lang === 'en') {
