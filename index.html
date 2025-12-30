@@ -341,7 +341,7 @@ input[type="range"]::-moz-range-thumb {
 <!-- ===== GAME ===== -->
 <div id="gameScreen">
   <div id="topBar">
-    <div>⏱️ <span id="timeEl">0</span>s</div>
+    <div>⏱️ <span id="timeEl">0</span></div>
     <div id="progressText">0 / 0</div>
 
 
@@ -566,7 +566,7 @@ function startTimer() {
 
   timerInterval = setInterval(() => {
     const t = Math.floor((Date.now() - startTime) / 1000);
-    timeEl.textContent = t;
+    timeEl.textContent = formatTime(t);
   }, 1000);
 }
 
@@ -574,7 +574,7 @@ function startTimer() {
 function endGame() {
   clearInterval(timerInterval);
   //resultText.textContent = \`Điểm: \${score} / \${words.length} | Thời gian: \${timeEl.textContent}s\`;
-  resultText.textContent = `Điểm: ${score} / ${words.length} | Thời gian: ${timeEl.textContent}s`;
+  resultText.textContent = `Điểm: ${score} / ${words.length} | Thời gian: ${timeEl.textContent}`;
   resultModal.style.display = "flex";
 }
 
@@ -608,6 +608,28 @@ function speakEnglish(text) {
 
   window.speechSynthesis.speak(utter);
 }
+
+function formatTime(totalSeconds) {
+  totalSeconds = Math.floor(totalSeconds);
+
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
+  // < 1 phút
+  if (totalSeconds < 60) {
+    return `${s}s`;
+  }
+
+  // < 1 giờ
+  if (totalSeconds < 3600) {
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  // >= 1 giờ
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 
 </script>
 
