@@ -124,6 +124,108 @@
   #resultBox button {
     margin-top: 8px;
   }
+
+  /* ===== PUZZLE GRID ===== */
+#puzzleGrid {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  max-width: 90vw;
+  margin: 0 auto;
+}
+
+/* ===== CARD ===== */
+.puzzle-card {
+  background: linear-gradient(135deg, #ffffff, #f0f9ff);
+  border: 3px solid #38bdf8;
+  border-radius: 14px;
+  height: 70px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+}
+
+/* hover */
+.puzzle-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+}
+
+/* selected */
+.puzzle-card.selected {
+  background: linear-gradient(135deg, #fde68a, #fef3c7);
+  border-color: #f59e0b;
+}
+
+/* ===== WRONG SHAKE ===== */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-6px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes flashRed {
+  0% { background: #fee2e2; }
+  50% { background: #ef4444; color: #fff; }
+  100% { background: #fee2e2; }
+}
+
+.puzzle-card.wrong {
+  animation: shake 0.35s ease, flashRed 0.35s ease;
+  border-color: #ef4444;
+}
+
+/* ===== CORRECT ===== */
+@keyframes correctPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spinFade {
+  0% { transform: rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: rotate(360deg) scale(0.3); opacity: 0; }
+}
+
+.puzzle-card.correct {
+  background: linear-gradient(135deg, #bbf7d0, #dcfce7);
+  border-color: #22c55e;
+  animation: correctPop 0.3s ease;
+}
+
+.puzzle-card.disappear {
+  animation: spinFade 0.6s ease forwards;
+  pointer-events: none;
+}
+
+/* ===== BUTTON ===== */
+.game-btn {
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  background: linear-gradient(135deg, #60a5fa, #38bdf8);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  transition: transform 0.2s;
+}
+
+.game-btn:hover {
+  transform: translateY(-2px);
+}
+
 </style>
 </head>
 
@@ -186,6 +288,8 @@ let matchedPairs = 0;
 let disqualifiedPairs = new Set();
 let startTime = 0;
 let timerInterval = null;
+var selectedCards = [];
+var disabledPairs = {}; // cặp đã sai sẽ không được tính điểm
 
 /* ================= FETCH ================= */
 async function fetchWords(user, total, mode) {
@@ -223,7 +327,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 function initGame(words) {
   score = 0;
   matchedPairs = 0;
-  disqualifiedPairs.clear();
+  disabledPairs = {};
   selected = [];
 
   scoreEl.textContent = 0;
@@ -249,64 +353,82 @@ function renderGrid(cards) {
   grid.style.gridTemplateColumns = "repeat(" + size + ", 1fr)";
 
   cards.forEach(card => {
-    const el = document.createElement("div");
-    el.className = "card";
-    el.textContent = card.text;
+    const div = createCard(card.text, card); //document.createElement("div");
+    // div.className = "puzzle-card";
+    // div.innerText  = card.text;
 
-    el.addEventListener("click", () => onSelect(el, card));
+    // div.addEventListener("click", () => onSelect(div, card));
 
-    card.el = el;
-    grid.appendChild(el);
+    grid.appendChild(div);
   });
 }
 
+function createCard(text, data) {
+  var div = document.createElement('div');
+  div.className = 'puzzle-card';
+  div.innerText = text;
 
-function onSelect(el, card) {
-  if (selected.length === 2 || el.classList.contains("hidden")) return;
+  div.addEventListener('click', function () {
+    onCardClick(div, data);
+  });
 
-  el.classList.add("selected");
-  selected.push({ el, card });
-
-  if (selected.length === 2) checkMatch();
+  return div;
 }
 
 
-function checkMatch() {
-  const [a, b] = selected;
+function onCardClick(card, data) {
+  if (card.classList.contains('correct')) return;
+  if (selectedCards.length === 2) return;
 
-  const isCorrect =
-    a.card.pairId === b.card.pairId &&
-    a.card.lang !== b.card.lang;
+  card.classList.add('selected');
+  selectedCards.push({ el: card, data: data });
 
-  console.log("a.card.pairId:" + a.card.pairId + "; b.card.pairId" + b.card.pairId);
+  if (selectedCards.length === 2) {
+    checkPair();
+  }
+}
 
-  if (isCorrect) {
-    setTimeout(() => {
-      a.el.classList.add("hidden");
-      b.el.classList.add("hidden");
-    }, 200);
+function checkPair() {
+  var c1 = selectedCards[0];
+  var c2 = selectedCards[1];
 
-    if (!disqualifiedPairs.has(a.card.pairId)) {
+  var key = c1.data.en;
+
+  // đúng
+  if (c1.data.pairId === c2.data.pairId && c1.data.lang !== c2.data.lang) {
+    if(!disabledPairs[key]) {
       score++;
       scoreEl.textContent = score;
     }
 
+    c1.el.classList.remove('selected');
+    c2.el.classList.remove('selected');
+
+    c1.el.classList.add('correct');
+    c2.el.classList.add('correct');
+
+    setTimeout(function () {
+      c1.el.classList.add('disappear');
+      c2.el.classList.add('disappear');
+    }, 300);
+
     matchedPairs++;
-    selected = [];
-
     if (matchedPairs === words.length) endGame();
+
   } else {
-    disqualifiedPairs.add(a.card.pairId);
+    // sai → khóa cặp này
+    disabledPairs[key] = true;
 
-    a.el.classList.add("wrong");
-    b.el.classList.add("wrong");
+    c1.el.classList.add('wrong');
+    c2.el.classList.add('wrong');
 
-    setTimeout(() => {
-      a.el.classList.remove("wrong", "selected");
-      b.el.classList.remove("wrong", "selected");
-      selected = [];
-    }, 500);
+    setTimeout(function () {
+      c1.el.classList.remove('wrong', 'selected');
+      c2.el.classList.remove('wrong', 'selected');
+    }, 400);
   }
+
+  selectedCards = [];
 }
 
 
