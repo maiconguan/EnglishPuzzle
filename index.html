@@ -427,6 +427,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
   const start = +parseInt(startRow.value, 10);
   const end = +parseInt(endRow.value, 10);
 
+  errorMsg.innerText='⏳ Đang tải dữ liệu. Xin vui lòng chờ...';
   words = await fetchWords( user, limit, mode, start, end );
 
   restartGame();
@@ -587,6 +588,7 @@ function restartGame() {
     errorMsg.innerText='❌ Không đủ từ để bắt đầu';
     return;
   }
+  errorMsg.innerText='';
 
   resultModal.style.display = "none";
   setupScreen.style.display = "none";
